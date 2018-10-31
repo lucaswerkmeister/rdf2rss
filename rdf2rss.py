@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding utf-8 -*-
 
+import argparse
 import datetime
 import PyRSS2Gen
 import rdflib
 import re
 from sys import argv, stdout
 
-root = rdflib.URIRef(argv[1])
+parser = argparse.ArgumentParser(description='Generate an RSS feed file from the RDF description of a blog.')
+parser.add_argument('root', metavar='URL', help='the URL of the blog')
+
+args = parser.parse_args()
+
+root = rdflib.URIRef(args.root)
 graph = rdflib.Graph()
 schema = rdflib.Namespace('http://schema.org/')
 
