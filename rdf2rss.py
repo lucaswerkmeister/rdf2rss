@@ -60,5 +60,5 @@ rss = PyRSS2Gen.RSS2(
     items=items,
 )
 
-rss.write_xml(args.out)
+rss.write_xml(args.out, encoding='utf-8')
 args.out.write('\n')
