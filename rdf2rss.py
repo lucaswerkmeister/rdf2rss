@@ -10,6 +10,7 @@ from sys import argv, stdout
 
 parser = argparse.ArgumentParser(description='Generate an RSS feed file from the RDF description of a blog.')
 parser.add_argument('root', metavar='URL', help='the URL of the blog')
+parser.add_argument('out', metavar='FILE', type=argparse.FileType('w'), default=stdout, nargs='?', help='the output file (default: standard output)')
 
 args = parser.parse_args()
 
@@ -59,5 +60,5 @@ rss = PyRSS2Gen.RSS2(
     items=items,
 )
 
-rss.write_xml(stdout)
-print('')
+rss.write_xml(args.out)
+args.out.write('\n')
