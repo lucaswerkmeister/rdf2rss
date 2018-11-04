@@ -50,7 +50,8 @@ for posting in graph.subjects(rdflib.RDF.type, schema.BlogPosting):
         author=value(posting, schema.author, schema.email),
     ))
 
-items.sort(key=lambda item: item.pubDate)
+# sort by pubDate, moving items without one to the end
+items.sort(key=lambda item: (item.pubDate is None, item.pubDate))
 
 rss = PyRSS2Gen.RSS2(
     title=value(root, schema.name),
