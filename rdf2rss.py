@@ -8,10 +8,22 @@ import rdflib
 import re
 from sys import stdout, stderr
 
-parser = argparse.ArgumentParser(description='Generate an RSS feed file from the RDF description of a blog.')
-parser.add_argument('root', metavar='URL', help='the URL of the blog')
-parser.add_argument('out', metavar='FILE', type=argparse.FileType('w'), default=stdout, nargs='?', help='the output file (default: standard output)')
-parser.add_argument('-v', '--verbose', action='store_true', help='print the RDF graph in Turtle format to standard error')
+parser = argparse.ArgumentParser(description='Generate an RSS feed file ' +
+                                 'from the RDF description of a blog.')
+parser.add_argument('root',
+                    metavar='URL',
+                    help='the URL of the blog')
+parser.add_argument('out',
+                    metavar='FILE',
+                    type=argparse.FileType('w'),
+                    default=stdout,
+                    nargs='?',
+                    help='the output file (default: standard output)')
+parser.add_argument('-v',
+                    '--verbose',
+                    action='store_true',
+                    help='print the RDF graph in Turtle format ' +
+                    'to standard error')
 
 args = parser.parse_args()
 
@@ -52,8 +64,11 @@ for posting in graph.subjects(rdflib.RDF.type, schema.BlogPosting):
     ))
 
 if args.verbose:
-    # rdflib refuses to return an unencoded string, so we have to decode the bytes object before print can encode it again
-    print(graph.serialize(format='turtle', encoding='utf-8').decode(encoding='utf-8'), file=stderr)
+    # rdflib refuses to return an unencoded string,
+    # so we have to decode the bytes object before print can encode it again
+    encoded = graph.serialize(format='turtle',
+                              encoding='utf-8')
+    print(encoded.decode(encoding='utf-8'), file=stderr)
 
 # sort by pubDate, moving items without one to the end
 items.sort(key=lambda item: (item.pubDate is None, item.pubDate))
