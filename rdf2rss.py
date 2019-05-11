@@ -6,7 +6,7 @@ import datetime
 import PyRSS2Gen
 import rdflib
 import re
-from sys import argv, stdout, stderr
+from sys import stdout, stderr
 
 parser = argparse.ArgumentParser(description='Generate an RSS feed file from the RDF description of a blog.')
 parser.add_argument('root', metavar='URL', help='the URL of the blog')
