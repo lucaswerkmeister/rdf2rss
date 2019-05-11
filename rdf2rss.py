@@ -31,6 +31,7 @@ root = rdflib.URIRef(args.root)
 graph = rdflib.Graph()
 schema = rdflib.Namespace('http://schema.org/')
 
+
 def value(start, *predicates):
     current = start
     for predicate in predicates:
@@ -38,6 +39,7 @@ def value(start, *predicates):
         if current is None:
             return None
     return cleanup(current.toPython())
+
 
 def cleanup(value):
     if value is None:
@@ -47,6 +49,7 @@ def cleanup(value):
     if type(value) is not str:
         return value
     return re.sub(r'\s+', ' ', value).strip()
+
 
 graph.parse(root)
 
