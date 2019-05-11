@@ -3,8 +3,8 @@
 
 import argparse
 import datetime
-import PyRSS2Gen
-import rdflib
+import PyRSS2Gen  # type: ignore
+import rdflib  # type: ignore
 import re
 from sys import stdout, stderr
 
