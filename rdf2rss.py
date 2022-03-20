@@ -32,6 +32,12 @@ graph = rdflib.Graph()
 schema = rdflib.Namespace('http://schema.org/')
 
 
+def guess_format(url):
+    if url.endswith('/'):
+        url += 'index.html'
+    return rdflib.util.guess_format(url)
+
+
 def value(start, *predicates):
     current = start
     for predicate in predicates:
@@ -51,12 +57,14 @@ def cleanup(value):
     return re.sub(r'\s+', ' ', value).strip()
 
 
-graph.parse(root)
+graph.parse(root,
+            format=guess_format(root))
 
 items = []
 
 for posting in graph.subjects(rdflib.RDF.type, schema.BlogPosting):
-    graph.parse(posting)
+    graph.parse(posting,
+                format=guess_format(posting))
     items.append(PyRSS2Gen.RSSItem(
         title=value(posting, schema.name),
         link=posting,

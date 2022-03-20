@@ -1,4 +1,6 @@
 flake8
 mypy
+pyRdfa3
 PyRSS2Gen
 rdflib
+requests
