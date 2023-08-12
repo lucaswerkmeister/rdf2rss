@@ -63,7 +63,7 @@ graph.parse(root,
 items = []
 
 for posting in graph.subjects(rdflib.RDF.type, schema.BlogPosting):
-    graph.parse(posting,
+    graph.parse(posting,  # type: ignore
                 format=guess_format(posting))
     items.append(PyRSS2Gen.RSSItem(
         title=value(posting, schema.name),
