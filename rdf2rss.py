@@ -19,6 +19,11 @@ parser.add_argument('out',
                     default=stdout,
                     nargs='?',
                     help='the output file (default: standard output)')
+parser.add_argument('-k',
+                    '--keyword',
+                    metavar='KEYWORD',
+                    help='If set, only output items (blog posts) ' +
+                    'with the given keyword (tag).')
 parser.add_argument('-v',
                     '--verbose',
                     action='store_true',
@@ -47,6 +52,17 @@ def value(start, *predicates):
     return cleanup(current.toPython())
 
 
+def values(subject, predicate):
+    return [cleanup(value.toPython())
+            for value in graph.objects(subject, predicate)]
+
+
+def comma_separated_values(subject, predicate):
+    return [value.strip()
+            for item in values(subject, predicate)
+            for value in item.split(',')]
+
+
 def cleanup(value):
     if value is None:
         return None
@@ -65,6 +81,10 @@ items = []
 for posting in graph.subjects(rdflib.RDF.type, schema.BlogPosting):
     graph.parse(posting,  # type: ignore
                 format=guess_format(posting))
+    if args.keyword is not None:
+        keywords = comma_separated_values(posting, schema.keywords)
+        if args.keyword not in keywords:
+            continue
     items.append(PyRSS2Gen.RSSItem(
         title=value(posting, schema.name),
         link=posting,
@@ -84,8 +104,12 @@ if args.verbose:
 # sort by pubDate, moving items without one to the end
 items.sort(key=lambda item: (item.pubDate is None, item.pubDate))
 
+title = value(root, schema.name)
+if args.keyword is not None:
+    title += ' (#' + args.keyword + ')'
+
 rss = PyRSS2Gen.RSS2(
-    title=value(root, schema.name),
+    title=title,
     link=root,
     description=value(root, schema.description),
     lastBuildDate=datetime.datetime.utcnow(),
