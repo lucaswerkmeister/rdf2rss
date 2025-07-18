@@ -8,6 +8,11 @@ import rdflib  # type: ignore
 import re
 from sys import stdout, stderr
 
+rdflib.plugin.register('rdfa',
+                       rdflib.parser.Parser,
+                       'pyRdfa.rdflibparsers',
+                       'RDFaParser')
+
 parser = argparse.ArgumentParser(description='Generate an RSS feed file ' +
                                  'from the RDF description of a blog.')
 parser.add_argument('root',
