@@ -1,5 +1,5 @@
 .PHONY: check
 
 check:
-	flake8 .
-	mypy .
+	flake8
+	mypy

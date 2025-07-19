@@ -1,0 +1,4 @@
+# -*- mode: conf; -*-
+[flake8]
+exclude =
+    venv
