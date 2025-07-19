@@ -6,6 +6,7 @@ import datetime
 import PyRSS2Gen  # type: ignore
 import rdflib  # type: ignore
 import re
+import requests
 from sys import stdout, stderr
 
 rdflib.plugin.register('rdfa',
@@ -36,6 +37,14 @@ parser.add_argument('-v',
                     'to standard error')
 
 args = parser.parse_args()
+
+our_user_agent = 'rdf2rss (https://github.com/lucaswerkmeister/rdf2rss)'
+rdflib_default_user_agent = rdflib.parser.headers['User-agent']
+rdflib.parser.headers['User-agent'] = \
+    f'{our_user_agent} {rdflib_default_user_agent}'
+requests_default_user_agent = requests.utils.default_user_agent
+requests.utils.default_user_agent = lambda *args, **kwargs: \
+    f'{our_user_agent} {requests_default_user_agent(*args, **kwargs)}'
 
 root = rdflib.URIRef(args.root)
 graph = rdflib.Graph()
