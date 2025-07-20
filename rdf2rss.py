@@ -2,12 +2,15 @@
 # -*- coding utf-8 -*-
 
 import argparse
+import bs4
 import datetime
 import PyRSS2Gen  # type: ignore
 import rdflib  # type: ignore
 import re
 import requests
 from sys import stdout, stderr
+from typing import Optional, cast
+from urllib.parse import urljoin
 
 rdflib.plugin.register('rdfa',
                        rdflib.parser.Parser,
@@ -25,11 +28,16 @@ parser.add_argument('out',
                     default=stdout,
                     nargs='?',
                     help='the output file (default: standard output)')
+parser.add_argument('-d',
+                    '--description',
+                    action='store_true',
+                    help='if an item (blog post) has no RDFa description, ' +
+                    'use its content as the RSS description')
 parser.add_argument('-k',
                     '--keyword',
                     metavar='KEYWORD',
-                    help='If set, only output items (blog posts) ' +
-                    'with the given keyword (tag).')
+                    help='only output items (blog posts) ' +
+                    'with the given keyword (tag)')
 parser.add_argument('-v',
                     '--verbose',
                     action='store_true',
@@ -87,6 +95,56 @@ def cleanup(value):
     return re.sub(r'\s+', ' ', value).strip()
 
 
+def description(posting: rdflib.term.Node) -> Optional[str]:
+    explicit_description = value(posting, schema.description)
+    if explicit_description is not None:
+        return explicit_description
+    if not args.description:
+        return None
+
+    # get the HTML
+    posting_uri = str(posting)
+    response = requests.get(posting_uri)
+    if not response.ok:
+        return None
+    html = response.text
+
+    # parse it and find the content inside
+    content = bs4.BeautifulSoup(html, 'html.parser')  # type: bs4.element.Tag
+    if (about := content.find(resource=posting_uri)) is not None:
+        content = cast(bs4.element.Tag, about)
+    elif (article := content.article) is not None:
+        content = article
+
+    # clean it up
+    for bad_tag_name in [
+            'footer',
+            'header',
+            'link',
+            'meta',
+    ]:
+        for bad_tag in content.find_all(bad_tag_name):
+            bad_tag.decompose()
+    for bad_attribute_name in [
+            'property',
+            'resource',
+            'typeof',
+    ]:
+        for tag in content.find_all(attrs={bad_attribute_name: True}):
+            tag = cast(bs4.element.Tag, tag)
+            del tag[bad_attribute_name]
+        # find_all() will not return content itself, so check that separately
+        if bad_attribute_name in content.attrs:
+            del content[bad_attribute_name]
+    for a in content.find_all('a'):
+        a = cast(bs4.element.Tag, a)
+        if (href := a.get('href')) is not None:
+            href = cast(str, href)
+            a['href'] = urljoin(posting_uri, href)
+
+    return str(content)
+
+
 graph.parse(root,
             format=guess_format(root))
 
@@ -102,7 +160,7 @@ for posting in graph.subjects(rdflib.RDF.type, schema.BlogPosting):
     items.append(PyRSS2Gen.RSSItem(
         title=value(posting, schema.name),
         link=posting,
-        description=value(posting, schema.description),
+        description=description(posting),
         guid=PyRSS2Gen.Guid(posting),
         pubDate=value(posting, schema.datePublished),
         author=value(posting, schema.author, schema.email),
