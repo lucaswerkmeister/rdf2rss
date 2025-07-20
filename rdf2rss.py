@@ -4,6 +4,7 @@
 import argparse
 import bs4
 import datetime
+import logging
 import PyRSS2Gen  # type: ignore
 import rdflib  # type: ignore
 import re
@@ -16,6 +17,8 @@ rdflib.plugin.register('rdfa',
                        rdflib.parser.Parser,
                        'pyRdfa.rdflibparsers',
                        'RDFaParser')
+
+logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description='Generate an RSS feed file ' +
                                  'from the RDF description of a blog.')
@@ -179,6 +182,13 @@ items.sort(
     key=lambda item: (item.pubDate is not None, item.pubDate),
     reverse=True,
 )
+
+for item in items:
+    if item.pubDate is not None:
+        continue
+    logger.warning(
+        f'Post has no schema:datePublished, cannot sort properly: {item.link}',
+    )
 
 title = value(root, schema.name)
 if args.keyword is not None:
