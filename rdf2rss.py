@@ -173,8 +173,12 @@ if args.verbose:
                               encoding='utf-8')
     print(encoded.decode(encoding='utf-8'), file=stderr)
 
-# sort by pubDate, moving items without one to the end
-items.sort(key=lambda item: (item.pubDate is None, item.pubDate))
+# sort by descending pubDate (reverse chronological order),
+# moving items without schema:datePublished to the end
+items.sort(
+    key=lambda item: (item.pubDate is not None, item.pubDate),
+    reverse=True,
+)
 
 title = value(root, schema.name)
 if args.keyword is not None:
