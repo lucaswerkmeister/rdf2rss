@@ -41,6 +41,11 @@ parser.add_argument('-k',
                     metavar='KEYWORD',
                     help='only output items (blog posts) ' +
                     'with the given keyword (tag)')
+parser.add_argument('-l',
+                    '--limit',
+                    type=int,
+                    metavar='NUMBER',
+                    help='only include the newest NUMBER items (blog posts)')
 parser.add_argument('-v',
                     '--verbose',
                     action='store_true',
@@ -189,6 +194,9 @@ for item in items:
     logger.warning(
         f'Post has no schema:datePublished, cannot sort properly: {item.link}',
     )
+
+if args.limit is not None:
+    items = items[:args.limit]
 
 title = value(root, schema.name)
 if args.keyword is not None:
