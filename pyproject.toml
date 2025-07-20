@@ -1,0 +1,26 @@
+[project]
+name = "rdf2rss"
+version = "0.1.0"
+authors = [
+    { name = "Lucas Werkmeister", email = "mail@lucaswerkmeister.de" },
+]
+description = "Generate an RSS feed file from the RDF description of a blog."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "beautifulsoup4",
+    "pyRdfa3",
+    "PyRSS2Gen",
+    "rdflib",
+    "requests",
+]
+
+[project.optional-dependencies]
+dev = [
+    "flake8",
+    "mypy",
+    "types-requests",
+]
+
+[project.scripts]
+rdf2rss = "rdf2rss:main"
