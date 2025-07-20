@@ -17,6 +17,7 @@ rdflib.plugin.register('rdfa',
                        rdflib.parser.Parser,
                        'pyRdfa.rdflibparsers',
                        'RDFaParser')
+schema = rdflib.Namespace('http://schema.org/')
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +53,6 @@ parser.add_argument('-v',
                     help='print the RDF graph in Turtle format ' +
                     'to standard error')
 
-args = parser.parse_args()
-
 our_user_agent = 'rdf2rss (https://github.com/lucaswerkmeister/rdf2rss)'
 rdflib_default_user_agent = rdflib.parser.headers['User-agent']
 rdflib.parser.headers['User-agent'] = \
@@ -62,10 +61,6 @@ requests_default_user_agent = requests.utils.default_user_agent
 requests.utils.default_user_agent = lambda *args, **kwargs: \
     f'{our_user_agent} {requests_default_user_agent(*args, **kwargs)}'
 
-root = rdflib.URIRef(args.root)
-graph = rdflib.Graph()
-schema = rdflib.Namespace('http://schema.org/')
-
 
 def guess_format(url):
     if url.endswith('/'):
@@ -73,7 +68,7 @@ def guess_format(url):
     return rdflib.util.guess_format(url)
 
 
-def value(start, *predicates):
+def value(graph, start, *predicates):
     current = start
     for predicate in predicates:
         current = graph.value(current, predicate, any=False)
@@ -82,14 +77,14 @@ def value(start, *predicates):
     return cleanup(current.toPython())
 
 
-def values(subject, predicate):
+def values(graph, subject, predicate):
     return [cleanup(value.toPython())
             for value in graph.objects(subject, predicate)]
 
 
-def comma_separated_values(subject, predicate):
+def comma_separated_values(graph, subject, predicate):
     return [value.strip()
-            for item in values(subject, predicate)
+            for item in values(graph, subject, predicate)
             for value in item.split(',')]
 
 
@@ -103,15 +98,8 @@ def cleanup(value):
     return re.sub(r'\s+', ' ', value).strip()
 
 
-def description(posting: rdflib.term.Node) -> Optional[str]:
-    explicit_description = value(posting, schema.description)
-    if explicit_description is not None:
-        return explicit_description
-    if not args.description:
-        return None
-
+def posting_content(posting_uri: str) -> Optional[str]:
     # get the HTML
-    posting_uri = str(posting)
     response = requests.get(posting_uri)
     if not response.ok:
         return None
@@ -153,62 +141,76 @@ def description(posting: rdflib.term.Node) -> Optional[str]:
     return str(content)
 
 
-graph.parse(root,
-            format=guess_format(root))
+def main():
+    args = parser.parse_args()
 
-items = []
+    root = rdflib.URIRef(args.root)
+    graph = rdflib.Graph()
 
-for posting in graph.subjects(rdflib.RDF.type, schema.BlogPosting):
-    graph.parse(str(posting),
-                format=guess_format(posting))
-    if args.keyword is not None:
-        keywords = comma_separated_values(posting, schema.keywords)
-        if args.keyword not in keywords:
-            continue
-    items.append(PyRSS2Gen.RSSItem(
-        title=value(posting, schema.name),
-        link=posting,
-        description=description(posting),
-        guid=PyRSS2Gen.Guid(posting),
-        pubDate=value(posting, schema.datePublished),
-        author=value(posting, schema.author, schema.email),
-    ))
+    graph.parse(root,
+                format=guess_format(root))
 
-if args.verbose:
-    # rdflib refuses to return an unencoded string,
-    # so we have to decode the bytes object before print can encode it again
-    encoded = graph.serialize(format='turtle',
-                              encoding='utf-8')
-    print(encoded.decode(encoding='utf-8'), file=stderr)
+    items = []
 
-# sort by descending pubDate (reverse chronological order),
-# moving items without schema:datePublished to the end
-items.sort(
-    key=lambda item: (item.pubDate is not None, item.pubDate),
-    reverse=True,
-)
+    for posting in graph.subjects(rdflib.RDF.type, schema.BlogPosting):
+        graph.parse(str(posting),
+                    format=guess_format(posting))
+        if args.keyword is not None:
+            keywords = comma_separated_values(graph, posting, schema.keywords)
+            if args.keyword not in keywords:
+                continue
+        description = value(graph, posting, schema.description)
+        if description is None and args.description:
+            description = posting_content(str(posting))
+        items.append(PyRSS2Gen.RSSItem(
+            title=value(graph, posting, schema.name),
+            link=posting,
+            description=description,
+            guid=PyRSS2Gen.Guid(posting),
+            pubDate=value(graph, posting, schema.datePublished),
+            author=value(graph, posting, schema.author, schema.email),
+        ))
 
-for item in items:
-    if item.pubDate is not None:
-        continue
-    logger.warning(
-        f'Post has no schema:datePublished, cannot sort properly: {item.link}',
+    if args.verbose:
+        # rdflib refuses to return an unencoded string, so we have to
+        # decode the bytes object before print can encode it again
+        encoded = graph.serialize(format='turtle',
+                                  encoding='utf-8')
+        print(encoded.decode(encoding='utf-8'), file=stderr)
+
+    # sort by descending pubDate (reverse chronological order),
+    # moving items without schema:datePublished to the end
+    items.sort(
+        key=lambda item: (item.pubDate is not None, item.pubDate),
+        reverse=True,
     )
 
-if args.limit is not None:
-    items = items[:args.limit]
+    for item in items:
+        if item.pubDate is not None:
+            continue
+        logger.warning(
+            'Post has no schema:datePublished, '
+            f'cannot sort properly: {item.link}',
+        )
 
-title = value(root, schema.name)
-if args.keyword is not None:
-    title += ' (#' + args.keyword + ')'
+    if args.limit is not None:
+        items = items[:args.limit]
 
-rss = PyRSS2Gen.RSS2(
-    title=title,
-    link=root,
-    description=value(root, schema.description),
-    lastBuildDate=datetime.datetime.utcnow(),
-    items=items,
-)
+    title = value(graph, root, schema.name)
+    if args.keyword is not None:
+        title += ' (#' + args.keyword + ')'
 
-rss.write_xml(args.out, encoding='utf-8')
-args.out.write('\n')
+    rss = PyRSS2Gen.RSS2(
+        title=title,
+        link=root,
+        description=value(graph, root, schema.description),
+        lastBuildDate=datetime.datetime.utcnow(),
+        items=items,
+    )
+
+    rss.write_xml(args.out, encoding='utf-8')
+    args.out.write('\n')
+
+
+if __name__ == '__main__':
+    main()
