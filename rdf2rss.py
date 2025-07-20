@@ -6,7 +6,7 @@ import bs4
 import datetime
 import logging
 import PyRSS2Gen  # type: ignore
-import rdflib  # type: ignore
+import rdflib
 import re
 import requests
 from sys import stdout, stderr
@@ -159,7 +159,7 @@ graph.parse(root,
 items = []
 
 for posting in graph.subjects(rdflib.RDF.type, schema.BlogPosting):
-    graph.parse(posting,  # type: ignore
+    graph.parse(str(posting),
                 format=guess_format(posting))
     if args.keyword is not None:
         keywords = comma_separated_values(posting, schema.keywords)
